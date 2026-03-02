@@ -31,7 +31,30 @@ setInterval(() => {
 
 // --- File logging ---
 const LOG_DIR = process.env.LOG_DIR || path.join(__dirname, "..", "logs");
+const LOG_RETENTION_DAYS = Number(process.env.LOG_RETENTION_DAYS) || 30;
 if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
+
+// Delete log files older than LOG_RETENTION_DAYS
+function cleanOldLogs() {
+  const cutoff = Date.now() - LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  try {
+    for (const file of fs.readdirSync(LOG_DIR)) {
+      if (!file.startsWith("events-") || !file.endsWith(".log")) continue;
+      const filePath = path.join(LOG_DIR, file);
+      const stat = fs.statSync(filePath);
+      if (stat.mtimeMs < cutoff) {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted old log: ${file}`);
+      }
+    }
+  } catch (err) {
+    console.error("Log cleanup failed:", err.message);
+  }
+}
+
+// Run cleanup on startup and daily
+cleanOldLogs();
+setInterval(cleanOldLogs, 24 * 60 * 60 * 1000);
 
 function logEvent(payload, status) {
   const timestamp = new Date().toISOString();
