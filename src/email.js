@@ -65,6 +65,36 @@ function buildPreChargebackEmail(payload) {
   return { subject, html };
 }
 
+function buildPreChargebackInquiryEmail(payload) {
+  const cb = payload.Chargeback || {};
+  const tx = payload.TransactionDetails || {};
+
+  const subject = `📋 Pre-Chargeback Inquiry — $${cb.Amount || "?"} ${(cb.Currency || "").toUpperCase()} — Card ${tx.MaskedCardNumber || "N/A"}`;
+
+  const html = `
+    <h2>Pre-Chargeback Inquiry</h2>
+    <table style="border-collapse:collapse;font-family:sans-serif;">
+      <tr><td style="padding:6px 12px;font-weight:bold;">Date</td><td style="padding:6px 12px;">${cb.Date || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Amount</td><td style="padding:6px 12px;">${cb.Amount || "N/A"} ${(cb.Currency || "").toUpperCase()}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Status</td><td style="padding:6px 12px;">${cb.Status || cb.StatusCategory || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Reason</td><td style="padding:6px 12px;">${cb.ChargebackReason || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Reason Message</td><td style="padding:6px 12px;">${cb.ReasonMessage || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Due Date</td><td style="padding:6px 12px;">${cb.DisputeDueDate || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Transaction ID</td><td style="padding:6px 12px;">${tx.TransactionId || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Client Unique ID</td><td style="padding:6px 12px;">${tx.ClientUniqueId || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Card</td><td style="padding:6px 12px;">${tx.MaskedCardNumber || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">ARN</td><td style="padding:6px 12px;">${tx.ARN || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Acquirer</td><td style="padding:6px 12px;">${tx.AcquirerName || "N/A"}</td></tr>
+    </table>
+    <br>
+    <p style="font-family:sans-serif;color:#666;font-size:12px;">
+      Event ID: ${payload.EventId || "N/A"} | Client: ${payload.ClientName || payload.ClientId || "N/A"}
+    </p>
+  `;
+
+  return { subject, html };
+}
+
 async function sendAlert(payload) {
   const eventType = payload.EventType || "";
   let email;
@@ -73,6 +103,8 @@ async function sendAlert(payload) {
     email = buildChargebackEmail(payload);
   } else if (eventType === "Pre-Chargeback Alert") {
     email = buildPreChargebackEmail(payload);
+  } else if (eventType === "Pre-Chargeback Inquiry") {
+    email = buildPreChargebackInquiryEmail(payload);
   } else {
     email = {
       subject: `Nuvei Event: ${eventType}`,
