@@ -1,13 +1,13 @@
 # Nuvei Chargeback & Dispute Alert Service
 
-Webhook listener that receives Nuvei DMN (Direct Merchant Notification) events and sends email alerts via SendGrid when a chargeback or pre-chargeback event is created or updated.
+Webhook listener that receives Nuvei DMN (Direct Merchant Notification) events and sends email alerts via SendGrid when a chargeback, pre-chargeback, or fraud event is created or updated.
 
 ## How It Works
 
 1. Nuvei sends a POST request to `https://your-domain.com/webhook/nuvei`
 2. The server validates the checksum (if configured) and checks the event type
 3. Duplicate events are detected by `EventId` and skipped (24h window)
-4. If the event is a **Chargeback**, **Pre-Chargeback Alert**, or **Pre-Chargeback Inquiry**, an email is sent to all recipients
+4. If the event is a **Chargeback**, **Pre-Chargeback Alert**, **Pre-Chargeback Inquiry**, or **Fraud Reported Transaction**, an email is sent to all recipients
 5. All events are logged to daily log files in the `logs/` directory
 6. All other event types are ignored
 
@@ -179,7 +179,7 @@ All should return `{"received":true,"processed":true}` and trigger emails.
 1. Log into the Nuvei Control Panel
 2. Go to **Settings > Notifications / DMN**
 3. Set webhook URL to: `https://your-domain.com/webhook/nuvei`
-4. Enable **Chargeback**, **Pre-Chargeback Alert**, and **Pre-Chargeback Inquiry** event types
+4. Enable **Chargeback**, **Pre-Chargeback Alert**, **Pre-Chargeback Inquiry**, and **Fraud Reported Transaction** event types
 5. Save
 
 ## SSL Certificate
@@ -203,6 +203,7 @@ certbot renew
 | Chargeback | Yes |
 | Pre-Chargeback Alert | Yes |
 | Pre-Chargeback Inquiry | Yes |
+| Fraud Reported Transaction | Yes |
 | All other events | No (ignored) |
 
 ## Features

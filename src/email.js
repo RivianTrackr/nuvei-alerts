@@ -95,6 +95,31 @@ function buildPreChargebackInquiryEmail(payload) {
   return { subject, html };
 }
 
+function buildFraudEmail(payload) {
+  const tx = payload.TransactionDetails || {};
+
+  const subject = `🚨 Fraud Reported — $${tx.Amount || "?"} ${(tx.Currency || "").toUpperCase()} — Card ${tx.MaskedCardNumber || "N/A"}`;
+
+  const html = `
+    <h2>Fraud Reported Transaction</h2>
+    <table style="border-collapse:collapse;font-family:sans-serif;">
+      <tr><td style="padding:6px 12px;font-weight:bold;">Transaction ID</td><td style="padding:6px 12px;">${tx.TransactionId || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Transaction Date</td><td style="padding:6px 12px;">${tx.TransactionDate || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Amount</td><td style="padding:6px 12px;">${tx.Amount || "N/A"} ${(tx.Currency || "").toUpperCase()}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Client Unique ID</td><td style="padding:6px 12px;">${tx.ClientUniqueId || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Card</td><td style="padding:6px 12px;">${tx.MaskedCardNumber || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">ARN</td><td style="padding:6px 12px;">${tx.ARN || "N/A"}</td></tr>
+      <tr><td style="padding:6px 12px;font-weight:bold;">Acquirer</td><td style="padding:6px 12px;">${tx.AcquirerName || "N/A"}</td></tr>
+    </table>
+    <br>
+    <p style="font-family:sans-serif;color:#666;font-size:12px;">
+      Event ID: ${payload.EventId || "N/A"} | Client: ${payload.ClientName || payload.ClientId || "N/A"}
+    </p>
+  `;
+
+  return { subject, html };
+}
+
 async function sendAlert(payload) {
   const eventType = payload.EventType || "";
   let email;
@@ -105,6 +130,8 @@ async function sendAlert(payload) {
     email = buildPreChargebackEmail(payload);
   } else if (eventType === "Pre-Chargeback Inquiry") {
     email = buildPreChargebackInquiryEmail(payload);
+  } else if (eventType === "Fraud Reported Transaction") {
+    email = buildFraudEmail(payload);
   } else {
     email = {
       subject: `Nuvei Event: ${eventType}`,

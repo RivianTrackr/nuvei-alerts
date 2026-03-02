@@ -99,7 +99,7 @@ app.post("/webhook/nuvei", async (req, res) => {
   }
 
   // Only process chargeback, pre-chargeback, and fraud events
-  const alertTypes = ["Chargeback", "Pre-Chargeback Alert", "Pre-Chargeback Inquiry"];
+  const alertTypes = ["Chargeback", "Pre-Chargeback Alert", "Pre-Chargeback Inquiry", "Fraud Reported Transaction"];
   if (!alertTypes.includes(eventType)) {
     console.log(`Ignoring event type: ${eventType}`);
     logEvent(payload, "ignored");
