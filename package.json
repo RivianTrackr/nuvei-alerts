@@ -1,0 +1,15 @@
+{
+  "name": "nuvei-alerts",
+  "version": "1.0.0",
+  "description": "Webhook listener for Nuvei chargeback and dispute email alerts",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "@sendgrid/mail": "^8.1.0",
+    "dotenv": "^16.4.0"
+  }
+}
