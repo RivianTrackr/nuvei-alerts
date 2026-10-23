@@ -122,15 +122,16 @@ function buildFraudEmail(payload) {
 
 async function sendAlert(payload) {
   const eventType = payload.EventType || "";
+  const type = eventType.toLowerCase(); // Nuvei's capitalization varies
   let email;
 
-  if (eventType === "Chargeback") {
+  if (type === "chargeback") {
     email = buildChargebackEmail(payload);
-  } else if (eventType === "Pre-Chargeback Alert") {
+  } else if (type === "pre-chargeback alert") {
     email = buildPreChargebackEmail(payload);
-  } else if (eventType === "Pre-Chargeback Inquiry") {
+  } else if (type === "pre-chargeback inquiry") {
     email = buildPreChargebackInquiryEmail(payload);
-  } else if (eventType === "Fraud Reported Transaction") {
+  } else if (type === "fraud reported transaction") {
     email = buildFraudEmail(payload);
   } else {
     email = {
