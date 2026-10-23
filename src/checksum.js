@@ -1,27 +1,23 @@
 const crypto = require("crypto");
 
 /**
- * Recursively extract all leaf values from a JSON object in order.
- * Nuvei checksum = SHA256(merchantSecretKey + all values concatenated)
+ * Nuvei event DMN checksum = SHA256(merchantSecretKey + the raw JSON body exactly as sent).
+ *
+ * Nuvei's docs say "concatenate all of the parameter values", but their worked example
+ * hashes the secret followed by the whole JSON body, and only that reproduces their
+ * published checksum (2729122933fb…, verified Oct 2026). The values-only method rejected
+ * every real event received Aug–Sep 2026, so it is not used.
  */
-function extractValues(obj) {
-  const values = [];
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    if (val !== null && typeof val === "object" && !Array.isArray(val)) {
-      values.push(...extractValues(val));
-    } else if (val !== null && val !== undefined) {
-      values.push(String(val));
-    }
-  }
-  return values;
-}
-
-function verifyChecksum(payload, receivedChecksum, merchantSecretKey) {
-  const values = extractValues(payload);
-  const raw = merchantSecretKey + values.join("");
-  const computed = crypto.createHash("sha256").update(raw, "utf8").digest("hex");
-  return computed === receivedChecksum;
+function verifyChecksum(rawBody, receivedChecksum, merchantSecretKey) {
+  if (!rawBody || !receivedChecksum || !merchantSecretKey) return false;
+  const computed = crypto
+    .createHash("sha256")
+    .update(merchantSecretKey + rawBody, "utf8")
+    .digest("hex");
+  const expected = String(receivedChecksum).trim().toLowerCase();
+  const a = Buffer.from(computed, "utf8");
+  const b = Buffer.from(expected, "utf8");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
 module.exports = { verifyChecksum };

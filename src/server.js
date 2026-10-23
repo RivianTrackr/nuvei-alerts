@@ -71,8 +71,13 @@ function logEvent(payload, status) {
   });
 }
 
-// Nuvei sends JSON payloads
-app.use(express.json());
+// Nuvei sends JSON payloads; keep the raw body too, since the checksum is computed over it
+app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf.toString("utf8"); } }));
+
+// Checksum mode: "enforce" (default) rejects unsigned or wrongly signed posts, so nobody
+// but Nuvei can trigger an alert email. "report" accepts them and only logs the result
+// (a fallback if Nuvei ever changes its signing).
+const CHECKSUM_MODE = process.env.NUVEI_CHECKSUM_MODE === "report" ? "report" : "enforce";
 
 // Health check
 app.get("/health", (_req, res) => {
@@ -87,20 +92,31 @@ app.post("/webhook/nuvei", async (req, res) => {
 
   console.log(`Received event: ${eventType} (ID: ${eventId})`);
 
-  // Checksum verification (optional but recommended)
+  // Checksum verification: required. Without it anyone who knows this URL could send a
+  // fake chargeback alert email. A missing secret fails closed.
   const merchantSecret = process.env.NUVEI_MERCHANT_SECRET;
-  if (merchantSecret) {
-    const checksum = req.headers["checksum"] || req.headers["Checksum"];
-    if (checksum && !verifyChecksum(payload, checksum, merchantSecret)) {
-      console.warn(`Checksum mismatch for event ${eventId} — rejecting`);
-      logEvent(payload, "rejected-checksum");
-      return res.status(401).json({ error: "Invalid checksum" });
+  const checksum = req.get("checksum");
+  const check = !merchantSecret
+    ? "no-secret-configured"
+    : !checksum
+      ? "unsigned"
+      : verifyChecksum(req.rawBody, checksum, merchantSecret)
+        ? "verified"
+        : "bad-checksum";
+  console.log(`Checksum for event ${eventId}: ${check}`);
+  if (check !== "verified") {
+    if (CHECKSUM_MODE === "enforce") {
+      console.warn(`Rejecting event ${eventId} (${check})`);
+      logEvent(payload, `rejected-${check}`);
+      return res.status(401).json({ error: "Invalid or missing checksum" });
     }
+    logEvent(payload, `accepted-${check}`);
   }
 
   // Only process chargeback, pre-chargeback, and fraud events
-  const alertTypes = ["Chargeback", "Pre-Chargeback Alert", "Pre-Chargeback Inquiry", "Fraud Reported Transaction"];
-  if (!alertTypes.includes(eventType)) {
+  // Compared case-insensitively: Nuvei has sent "Fraud reported Transaction" (lowercase r).
+  const alertTypes = ["chargeback", "pre-chargeback alert", "pre-chargeback inquiry", "fraud reported transaction"];
+  if (!alertTypes.includes(eventType.toLowerCase())) {
     console.log(`Ignoring event type: ${eventType}`);
     logEvent(payload, "ignored");
     return res.json({ received: true, processed: false, reason: "Event type not monitored" });
@@ -130,5 +146,6 @@ app.listen(PORT, () => {
   console.log(`Nuvei alert server listening on port ${PORT}`);
   console.log(`Webhook URL: POST /webhook/nuvei`);
   console.log(`Recipients: ${process.env.ALERT_RECIPIENTS || "NOT SET"}`);
+  console.log(`Checksum: ${CHECKSUM_MODE}${process.env.NUVEI_MERCHANT_SECRET ? "" : " (NUVEI_MERCHANT_SECRET NOT SET: no event can be verified)"}`);
   console.log(`Log directory: ${LOG_DIR}`);
 });
